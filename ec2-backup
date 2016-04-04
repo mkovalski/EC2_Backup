@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+import os
+import argparse
+import subprocess
+
+method = ''
+volume_id = ''
+directory = ''
+
+parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
+		     Elastic Block Storage (EBS).  This is achieved by creating a volume of \
+		          the appropriate size, attaching it to an EC2 instance and finally copying \
+			       the files from the given directory into this volume.')
+parser.add_argument('-m', help="Use the given method to perform the backup. Valid methods are 'dd' and 'rsync'; default is 'dd'.")
+parser.add_argument('-v', help="Use the given volume instead of creating a new one.")
+parser.add_argument('dir', help="Directory to backup")
+
+args = parser.parse_args()
+
+if not args.m:
+	method = 'dd'
+else:
+	method = args.m
+
+volume_id = args.v
+directory = args.dir
+
