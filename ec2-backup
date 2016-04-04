@@ -1,28 +1,58 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import os
 import argparse
 import subprocess
+import sys
 
+#argparse local variables
 method = ''
 volume_id = ''
 directory = ''
 
-parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
-		     Elastic Block Storage (EBS).  This is achieved by creating a volume of \
-		          the appropriate size, attaching it to an EC2 instance and finally copying \
-			       the files from the given directory into this volume.')
-parser.add_argument('-m', help="Use the given method to perform the backup. Valid methods are 'dd' and 'rsync'; default is 'dd'.")
-parser.add_argument('-v', help="Use the given volume instead of creating a new one.")
-parser.add_argument('dir', help="Directory to backup")
+#EC2_BACKUP_VERBOSE
+verbose = False
+#EC2_BACKUP_FLAGS_SSH or use Original
+key = None
+#EC2_BACKUP_FLAGS_AWS
+backup_flags = None
+#return code for program
+exit_code = 0
 
-args = parser.parse_args()
+def set_params():
+    parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
+                 Elastic Block Storage (EBS).  This is achieved by creating a volume of \
+                      the appropriate size, attaching it to an EC2 instance and finally copying \
+                       the files from the given directory into this volume.')
+    parser.add_argument('-m',  choices=['dd', 'rsync'], help="Use the given method to perform the backup. Valid methods are 'dd' and 'rsync'; default is 'dd'.")
+    parser.add_argument('-v', help="Use the given volume instead of creating a new one.")
+    parser.add_argument('dir', help="Directory to backup")
 
-if not args.m:
-	method = 'dd'
-else:
-	method = args.m
+    args = parser.parse_args()
 
-volume_id = args.v
-directory = args.dir
+    #default should use dd, rsync otherwise
+    if not args.m:
+        method = 'dd'
+    else:
+        method = args.m
+
+    volume_id = args.v
+    directory = args.dir
+
+    if os.environ.get('EC2_BACKUP_VERBOSE'):
+        verbose = True
+
+    if os.environ.get('EC2_BACKUP_FLAGS_SSH'):
+        key = os.environ.get('EC2_BACKUP_FLAGS_SSH')
+
+    if os.environ.get('EC2_BACKUP_FLAGS_AWS'):
+        backup_flags = os.environ.get('EC2_BACKUP_FLAGS_AWS')
+
+def main():
+    set_params()
+
+if __name__ == "__main__":
+    main()
+
 
