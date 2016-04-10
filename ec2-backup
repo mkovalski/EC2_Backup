@@ -47,11 +47,16 @@ def check_volume_id(vol_id):
     (output, error) = process.communicate()
     if process.returncode != 0:
         print error
-        sys.exit(1)
+        sys.exit(process.returncode)
     else:
         return
 
-
+def check_dir(directory):
+    if os.path.isdir(directory):
+        return
+    else:
+        print "%s does not exits, please use a directory that exists for backup" % directory
+        sys.exit(2)
 
 def main():
     method = ''
@@ -77,7 +82,11 @@ def main():
     if verbose and volume_id:
         print "Volume %s OK" % volume_id
 
-
+    if verbose:
+        print "Checking directory %s" % directory
+    check_dir(directory)
+    if verbose:
+        print "Directory %s OK " % directory
     
 
 if __name__ == "__main__":
