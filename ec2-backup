@@ -48,10 +48,10 @@ def verbose_print(msg):
 		print (msg)
 
 def check_volume_id(vol_id, vol_size):
-	#check valid volume ID
-	#Move to create_volume or a check_volume?
-	#TODO: Check if attached already
-	#TODO: Check size w/ result from check_dir
+    #check valid volume ID
+    #Move to create_volume or a check_volume?
+    #TODO: Check if attached already
+    #TODO: Check size w/ result from check_dir
      
     #if no volume given, return and create one
     if not vol_id:
@@ -140,13 +140,13 @@ def main():
     #params set
     (method, volume_id, directory, key, backup_flags) = set_params()
 
-   	#TODO: Check size of directory in check_dir
+    #TODO: Check size of directory in check_dir
     dir_size = check_dir(directory)
      
     if not check_volume_id(volume_id, dir_size*2):
         volume_id = create_volume(dir_size*2)
 
-   	instance = create_instance(backup_flags)
+    instance = create_instance(backup_flags)
     use_volume(volume_id)
     launch_backup(method)
     spin_down()
