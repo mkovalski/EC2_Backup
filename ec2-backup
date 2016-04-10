@@ -5,7 +5,11 @@ import argparse
 import subprocess
 import sys
 
+#Global:
+VERBOSE = False
+
 def set_params():
+	global VERBOSE
     parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
                  Elastic Block Storage (EBS).  This is achieved by creating a volume of \
                       the appropriate size, attaching it to an EC2 instance and finally copying \
@@ -26,8 +30,8 @@ def set_params():
     directory = args.dir
 
     if os.environ.get('EC2_BACKUP_VERBOSE'):
-        verbose = True
-    else: verbose = False
+        VERBOSE = True
+    else: VERBOSE = False
 
     if os.environ.get('EC2_BACKUP_FLAGS_SSH'):
         key = os.environ.get('EC2_BACKUP_FLAGS_SSH')
@@ -37,10 +41,20 @@ def set_params():
         backup_flags = os.environ.get('EC2_BACKUP_FLAGS_AWS')
     else: backup_flags = None
 
-    return (method, volume_id, directory, verbose, key, backup_flags)
+    return (method, volume_id, directory, key, backup_flags)
 
+def verbose_print(msg):
+	if (VERBOSE):
+		print (msg)
 
 def check_volume_id(vol_id):
+	#check valid volume ID
+	#Move to create_volume or a check_volume?
+	#TODO: Check if attached already
+	#TODO: Check size w/ result from check_dir
+    if volume_id:
+        verbose_print("Checking volume %s given..." % volume_id)
+
     if not vol_id:
         return
     process = subprocess.Popen("aws ec2 describe-volumes --volume-ids %s " % vol_id, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -49,22 +63,37 @@ def check_volume_id(vol_id):
         print error
         sys.exit(process.returncode)
     else:
+        verbose_print("Volume %s OK" % volume_id)
         return
 
-def check_dir(directory):
+def check_dir(directory,verbose):
+    verbose_print("Checking directory %s" % directory)
     if os.path.isdir(directory):
+       	verbose_print("Directory %s OK " % directory)
         return
     else:
         print "%s does not exits, please use a directory that exists for backup" % directory
         sys.exit(2)
+
+def create_instance():
+
+def create_volume(volume_id):
+
+def use_volume(volume_id):
+	#attach and mount volume
+
+def launch_backup(method):
+	#Do dd or rsync
+
+def spin_down():
+	#Clean up - shutdown instances and such
 
 def main():
     method = ''
     volume_id = ''
     directory = ''
 
-    #EC2_BACKUP_VERBOSE
-    verbose = False
+    #EC2_BACKUP_VERBOSE set as global
     #EC2_BACKUP_FLAGS_SSH or use Original
     key = None
     #EC2_BACKUP_FLAGS_AWS
@@ -73,21 +102,18 @@ def main():
     exit_code = 0
     
     #params set
-    (method, volume_id, directory, verbose, key, backup_flags) = set_params()
-    
-    #check valid volume ID
-    if verbose and volume_id:
-        print "Checking volume %s given..." % volume_id
-    check_volume_id(volume_id)
-    if verbose and volume_id:
-        print "Volume %s OK" % volume_id
+    (method, volume_id, directory, key, backup_flags) = set_params()
 
-    if verbose:
-        print "Checking directory %s" % directory
-    check_dir(directory)
-    if verbose:
-        print "Directory %s OK " % directory
-    
+   	#TODO: Check size of directory in check_dir
+    size = check_dir(directory)
+     
+    if not check_volume_id(volume_id):
+		create_volume(size)
+
+   	create_instance()
+	use_volume(volume_id)
+	launch_backup(method)
+	spin_down()
 
 if __name__ == "__main__":
     main()
