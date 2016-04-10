@@ -96,16 +96,30 @@ def check_dir(directory):
 def create_instance(backup_flags):
     verbose_print("Creating instance to attach volume...")
     ubuntu='ami-fce3c696'
+    instance_id = ''
+
     command = 'aws ec2 run-instances --image-id %s ' % ubuntu
     if backup_flags:
         command += backup_flags
 
-
+    
+    return instance_id
 
 
 def create_volume(vol_size): 
+    vol_id = ""
+
     verbose_print("Creating volume of size %sKB" % str(vol_size))
-    return None
+    vol_size = int(vol_size / 100000)
+    if vol_size < 1:
+        verbose_print("Directory size less than 1GB, volume will be 1G")
+        vol_size = 1
+
+    process = subprocess.Popen('aws ec2 create-volume --availability-zone us-east-1d --size ' + str(vol_size), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    #(output, error) = process.communicate()
+     
+    
+    return vol_id
 
 def use_volume(volume_id):
     #attach and mount volume
