@@ -43,9 +43,13 @@ def set_params():
 def check_volume_id(vol_id):
     if not vol_id:
         return
-    #process = subprocess.Popen("aws ec2 describe-volumes --volume-ids %s " % vol_id, stdout=PIPE, stderr=PIPE, shell=True)
-    #(output, error) = process.communicate()
-    #print output
+    process = subprocess.Popen("aws ec2 describe-volumes --volume-ids %s " % vol_id, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+    if process.returncode != 0:
+        print error
+        sys.exit(1)
+    else:
+        return
 
 
 
@@ -62,9 +66,19 @@ def main():
     backup_flags = None
     #return code for program
     exit_code = 0
-
+    
+    #params set
     (method, volume_id, directory, verbose, key, backup_flags) = set_params()
+    
+    #check valid volume ID
+    if verbose and volume_id:
+        print "Checking volume %s given..." % volume_id
     check_volume_id(volume_id)
+    if verbose and volume_id:
+        print "Volume %s OK" % volume_id
+
+
+    
 
 if __name__ == "__main__":
     main()
