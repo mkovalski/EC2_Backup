@@ -1,24 +1,9 @@
 #!/usr/bin/python
 
-from __future__ import print_function
 import os
 import argparse
 import subprocess
 import sys
-
-#argparse local variables
-method = ''
-volume_id = ''
-directory = ''
-
-#EC2_BACKUP_VERBOSE
-verbose = False
-#EC2_BACKUP_FLAGS_SSH or use Original
-key = None
-#EC2_BACKUP_FLAGS_AWS
-backup_flags = None
-#return code for program
-exit_code = 0
 
 def set_params():
     parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
@@ -30,7 +15,7 @@ def set_params():
     parser.add_argument('dir', help="Directory to backup")
 
     args = parser.parse_args()
-
+    
     #default should use dd, rsync otherwise
     if not args.m:
         method = 'dd'
@@ -42,15 +27,44 @@ def set_params():
 
     if os.environ.get('EC2_BACKUP_VERBOSE'):
         verbose = True
+    else: verbose = False
 
     if os.environ.get('EC2_BACKUP_FLAGS_SSH'):
         key = os.environ.get('EC2_BACKUP_FLAGS_SSH')
+    else: key = None
 
     if os.environ.get('EC2_BACKUP_FLAGS_AWS'):
         backup_flags = os.environ.get('EC2_BACKUP_FLAGS_AWS')
+    else: backup_flags = None
+
+    return (method, volume_id, directory, verbose, key, backup_flags)
+
+
+def check_volume_id(vol_id):
+    if not vol_id:
+        return
+    #process = subprocess.Popen("aws ec2 describe-volumes --volume-ids %s " % vol_id, stdout=PIPE, stderr=PIPE, shell=True)
+    #(output, error) = process.communicate()
+    #print output
+
+
 
 def main():
-    set_params()
+    method = ''
+    volume_id = ''
+    directory = ''
+
+    #EC2_BACKUP_VERBOSE
+    verbose = False
+    #EC2_BACKUP_FLAGS_SSH or use Original
+    key = None
+    #EC2_BACKUP_FLAGS_AWS
+    backup_flags = None
+    #return code for program
+    exit_code = 0
+
+    (method, volume_id, directory, verbose, key, backup_flags) = set_params()
+    check_volume_id(volume_id)
 
 if __name__ == "__main__":
     main()
