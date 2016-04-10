@@ -66,7 +66,7 @@ def check_volume_id(vol_id):
         verbose_print("Volume %s OK" % volume_id)
         return
 
-def check_dir(directory,verbose):
+def check_dir(directory):
     verbose_print("Checking directory %s" % directory)
     if os.path.isdir(directory):
        	verbose_print("Directory %s OK " % directory)
