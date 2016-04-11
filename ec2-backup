@@ -18,6 +18,7 @@ INSTANCE_DNS = ''
 SSH_FLAGS = None
 METHOD = 'dd'
 INSTANCE_TYPE = 't2.micro'
+DEL_VOL_ON_ERR = True
 
 def signal_handler(sig, frame):
     spin_down(10)
@@ -28,6 +29,7 @@ def set_params():
     global VOLUME_ID
     global SSH_FLAGS
     global METHOD
+    global DEL_VOL_ON_ERR
     parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
                  Elastic Block Storage (EBS).  This is achieved by creating a volume of \
                       the appropriate size, attaching it to an EC2 instance and finally copying \
@@ -45,6 +47,8 @@ def set_params():
         METHOD = args.m
 
     VOLUME_ID = args.v
+    if (args.v != None):
+        DEL_VOL_ON_ERR = False
     directory = args.dir
 
     if os.environ.get('EC2_BACKUP_VERBOSE'):
@@ -449,6 +453,14 @@ def spin_down(exitcode=None):
 
         if (process.returncode != 0):
             sys.stderr.write(error)
+            if (VOL_DEL_ON_ERR):
+                verbose_print("Deleting Volume ID %s"%VOLUME_ID)
+                cmd = 'aws ec2 delete-volume --volume-id %s'%VOLUME_ID
+                process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                (output, error) = process.communicate()
+
+                if (process.returncode != 0):
+                    sys.stderr.write(error)
 
     if (INSTANCE_ID.strip() != ''):
         verbose_print("Terminating Instance ID %s"%INSTANCE_ID)

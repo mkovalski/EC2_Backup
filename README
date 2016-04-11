@@ -5,22 +5,57 @@ https://github.com/mkovalski/EC2_Backup
 Michael Kovalski
 Timothy Williams
 
-To create this project, the group decided to use Python. There was some consideratin between using either Python or creating a bash script, but we decided Python was the better language to use for this project. Here is why:
 
-Python let us handle arguments the way that we felt was best. You can make sure the user required to provide an argument, give the user specific choices, and easily parse apart their arguments. The argument handling module, argparse, was the first thing that came to mind when making this project.
+#####
+Usability
+#####
+Accepted EC2_BACKUP_FLAGS_AWS: 
+--instance-type <type>
 
-The next thing we needed to think about was how many system calls were going to be made versus how much of the project would be parsing. We thought about it and while there are a fair amount of system calls, most of our time would be parsing apart data and returning an error if the values were not as expected. Because of this, we decided Python was great for looking at data and parsing it and we were less worried about system calls. We could easily use the subprocess module to make all of our system calls.
+Key-pair Used:
+EC2-Backup-Key
+(Key is added to generated and AWS if it does not exist, otherwise assumed to be ~/.ssh/EC2-Backup-Key)
 
-Lastly, we were aware of the output from using the aws commands. It would be much harder to parse these json objects in a bash script, and python has a json module to turn this aws output to a json object (Python dictionary). This made it much easier to index our data and grab values that were needed from the aws cli.
+#####
+Language
+#####
+
+To create this project, the group decided to use Python. 
+There was some consideratin between using either Python or creating a bash script, but we decided Python was the better language to use for this project. Here is why:
+
+Python let us handle arguments the way that we felt was best. 
+You can make sure the user required to provide an argument, give the user specific choices, and easily parse apart their arguments. 
+The argument handling module, argparse, was the first thing that came to mind when making this project.
+
+The next thing we needed to think about was how many system calls were going to be made versus how much of the project would be parsing. 
+We thought about it and while there are a fair amount of system calls, most of our time would be parsing apart data and returning an error if the values were not as expected. 
+Because of this, we decided Python was great for looking at data and parsing it and we were less worried about system calls. We could easily use the subprocess module to make all of our system calls.
+
+Lastly, we were aware of the output from using the aws commands. It would be harder to parse these json objects in a bash script, and python has a json module to turn this aws output to a json object (Python dictionary). This made it much easier to index our data and grab values that were needed from the aws cli.
 
 The parsing of the input data was the easier part of this assignment. Really, we needed to adjust our local variables based on user input and apply that later on in the code. 
 
-The issue we seemed to run into is the use of keys. The only way to really see what key the user is using on an AWS instance is to use the describe-key-pairs option. By doing this, we can see the list of key pairs that the user has. But, if there are multiple, we can run into an issue. We need to assume the user is using the correct key in their ~/.ssh/config file otherwise we cannot access the server. But, as the requirements state, we should assume the user has set up their environment correctly. This implies that the key they are using in their AWS ec2 instances is correct. If a correct key is not found, then one will be created to use just for this instance. 
 
-The group did have issues with the flags set to create an instance. At first, we were under the impression that we could create whatever instance we wanted and use this throughout the process. But, this is not the case. For example, we decided to use an Ubuntu instance. But, the user has the option to set the AMI for the instance of their choosing. One issue that arises is that all instances do not use the same 'root' login. Ubuntu uses ubuntu, another instance can use 'ec2-user', another 'admin, another 'root', and so forth. This script is not able to handle this.
+#####
+Challenges
+#####
 
-The group decided to format the volume of type ext4 if an rsync was needed. If it is not, dd copies over the raw data to the volume. 
+An issue we ran into was the use of keys. 
+The only way to really see what key the user is using on an AWS instance is to use the describe-key-pairs option. 
+By doing this, we can see the list of key pairs that the user has. But, if there are multiple, we can run into an issue. 
+Since instances needed to be created with a key-pair, an EC2-Backup-Key is created. This key is added to ~/.ssh when created. If the key-pair already exists, it will assume the private key is present. The EC2_BACKUP_FLAGS_SSH can specify a different name for the key-pair, but the program will always use the EC2-Backup-Key as the instance key-pair. 
+
+The group did have issues with the flags set to create an instance. In the end, only instance-type was configurable.
+Since guaranteeing stablity requires a known OS, we did not feel it was useful to allow the AMI to be configured.  
+
+The re-mapping of /dev/sdf to /dev/xvdf caused some problems, as the dd command used during testing returned without errors using /dev/sdf. Eventually this was caught.
+The group decided to format the volume of type ext4 if a new filesystem for rsync was needed. If it is not, dd copies over the raw data to the volume. 
 
 After we mount the volume and backup the data to the volume, we unmount the volume, spin down the instance, and print the volume name at the end.
+This clean up function is called in the case of an error wherever possible (including CTRL-C), to prevent running instances from failed runs.
+If an error occurs, the volume created is delete UNLESS the -v argument was used.
 
 Another issue we ran into was the process of using rsync dealing with ssh keys. We originally were providing the key using the "~" symbolizing the home directory. We had to do a replace, ssh_flags = ssh_flags.replace("~","$HOME"), to get this working with rsync.
+
+Giving ample time instances and volumes to become available and attach was a challenge to overcome. To avoid long static pauses, loops were set up to check the state.
+This same approach was used for confirming the ability to connect to the instance.

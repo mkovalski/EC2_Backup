@@ -1,3 +1,28 @@
+commit 78ae0ceb740649568786f2ec74d0e84ad6aca9bd
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 13:15:08 2016 -0400
+
+    Signals, Instance Type and SSH Flags
+
+commit fce7b2609f0048f4513b0b99dbaa7c43f4a18129
+Merge: fe4e31f 723204d
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 12:04:29 2016 -0400
+
+    Merge branch 'master' of github.com:mkovalski/EC2_Backup
+
+commit fe4e31f93023d5e4f3da86913e0860ee4d80d082
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 12:04:03 2016 -0400
+
+    Stable, but doesn't use flags yet
+
+commit 723204db3c6d19ad765404e967f31cda8a33d0de
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Mon Apr 11 11:58:59 2016 -0400
+
+    Updated gitlog
+
 commit d73c9ef78725bea9b6d16979a4cff754d2fe1ea7
 Author: Michael Kovalski <mkovalsk@stevens.edu>
 Date:   Mon Apr 11 11:50:27 2016 -0400
