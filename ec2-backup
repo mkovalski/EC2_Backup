@@ -245,6 +245,58 @@ def wait_for_volume(volume_id):
     verbose_print("Volume Ready")
     return True
     
+def wait_for_connect():
+    timeout = 45
+    count = 0
+    delay = 10
+
+    verbose_print("Attempting to ssh to instance")
+    cmd ='ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"uname -a\"'%(SSH_FLAGS,INSTANCE_DNS)
+    process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+    while (process.returncode != 0):
+        time.sleep(delay)
+
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+
+        if (count<=timeout):
+            count = count + delay
+        else:
+            sys.stderr.write(error)
+            spin_down(7)
+    
+    verbose_print("Connected: %s"%output.strip('\n')
+    return True
+
+def wait_for_attach():
+    timeout = 30
+    count = 0
+    delay = 5
+    state = ''
+    cmd = "aws ec2 describe-volumes --volume-ids %s --output text --query 'Volumes[*].Attachments[*].State'" % VOLUME_ID
+
+    while (state != 'attached'):
+        verbose_print("Waiting for Volume to Attach")
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+        else:
+            state = output.strip('\n')
+            verbose_print("Reading state: %s" % state)
+
+        if (count <= timeout):
+            count = count + delay
+        else:
+            sys.stderr.write("Error: Volume Attach Timeout")    
+            spin_down(4)
+        time.sleep(delay)
+
+    verbose_print("Volume Attached")
+    return True
+ 
 
 def create_volume(vol_size): 
     global VOLUME_ID
@@ -277,11 +329,12 @@ def attach_volume(volume_id):
     if (process.returncode != 0):
         sys.stderr.write(error)
         spin_down(process.returncode)
-    else:
-        time.sleep(20)
-        verbose_print("Volume Attached")
+    
+    wait_for_attach()
+    return True
     
 def mount_volume():
+    wait_for_connect()
     verbose_print("Mounting Volume to Instance")
     #Check for filesystem
     verbose_print("Checking for filesystem")
@@ -310,6 +363,7 @@ def mount_volume():
 
 
 def launch_backup(directory, method, ssh_flags):
+    wait_for_connect()
     #Do dd or rsync
     if (method == 'dd'):
         verbose_print("Launching dd backup")
