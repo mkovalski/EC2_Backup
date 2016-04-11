@@ -338,28 +338,37 @@ def mount_volume():
     verbose_print("Mounting Volume to Instance")
     #Check for filesystem
     verbose_print("Checking for filesystem")
-    cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"blkid /dev/sdf\""%(SSH_FLAGS, INSTANCE_DNS)
+    cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"blkid /dev/xvdf\""%(SSH_FLAGS, INSTANCE_DNS)
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     (output, error) = process.communicate()
     if (process.returncode != 0):
         verbose_print("Error on checking for fs")
         sys.stderr.write(error)
+        cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"lsblk\""%(SSH_FLAGS, INSTANCE_DNS)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        verbose_print(output)
         spin_down(process.returncode)
     
     #Create filesystem if needed
     if (output.strip('\n') == ''):
         verbose_print("Making filesystem")
-        cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkfs -t ext4 /dev/sdf\""%(SSH_FLAGS, INSTANCE_DNS)
+        cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkfs -t ext4 /dev/xvdf\""%(SSH_FLAGS, INSTANCE_DNS)
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         (output, error) = process.communicate()
         if (process.returncode != 0):
             sys.stderr.write(error)
             spin_down(process.returncode)
-        
+        verbose_print("FS Created: %s"%output.strip('\n'))
     #Mount
     verbose_print("Mounting")
-    cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkdir /mnt/backup; sudo mount /dev/sdf /mnt/backup\""%(SSH_FLAGS, INSTANCE_DNS)
-
+    cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkdir /mnt/backup; sudo mount /dev/xvdf /mnt/backup\""%(SSH_FLAGS, INSTANCE_DNS)
+    if (process.returncode != 0):
+        sys.stderr.write(error)
+        spin_down(process.returncode)
+    verbose_print("Mounted FS: %s"%output)
+    
+    return True 
 
 
 def launch_backup(directory, method, ssh_flags):
@@ -378,8 +387,8 @@ def launch_backup(directory, method, ssh_flags):
     #Rsync    
     else:
         verbose_print("Launching rsync backup")
-        cmd = "rsync --rsync-path\"sudo rsync\" -e \"ssh -oStrictHostKeyChecking=no %s\" -a %s ubuntu@%s:/mnt/backup" %(ssh_flags,directory,INSTANCE_DNS)
-        process = subprocess.Popen(dd_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        cmd = "rsync --rsync-path \"sudo rsync\" -e \"ssh -oStrictHostKeyChecking=no %s\" -a %s ubuntu@%s:/mnt/backup" %(ssh_flags,directory,INSTANCE_DNS)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         (output, error) = process.communicate()
 
         if (process.returncode != 0):
@@ -396,7 +405,7 @@ def spin_down(exitcode=None):
     #unmount
     if ((VOLUME_ID.strip() != '') and (INSTANCE_ID.strip() != '') and (METHOD == 'rsync')):
         verbose_print("Unmounting device")
-        cmd = 'ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo umount -d /dev/sdf\"'%(SSH_FLAGS,INSTANCE_DNS)
+        cmd = 'ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo umount -d /dev/xvdf\"'%(SSH_FLAGS,INSTANCE_DNS)
         process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         (output, error) = process.communicate()
 
