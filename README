@@ -1,0 +1,16 @@
+ec2-backup
+
+https://github.com/mkovalski/EC2_Backup
+
+Michael Kovalski
+Timothy Williams
+
+To create this project, the group decided to use Python. There was some consideratin between using either Python or creating a bash script, but we decided Python was the better language to use for this project. Here is why:
+
+Python let us handle arguments the way that we felt was best. You can make sure the user required to provide an argument, give the user specific choices, and easily parse apart their arguments. The argument handling module, argparse, was the first thing that came to mind when making this project.
+
+The next thing we needed to think about was how many system calls were going to be made versus how much of the project would be parsing. We thought about it and while there are a fair amount of system calls, most of our time would be parsing apart data and returning an error if the values were not as expected. Because of this, we decided Python was great for looking at data and parsing it and we were less worried about system calls. We could easily use the subprocess module to make all of our system calls.
+
+Lastly, we were aware of the output from using the aws commands. It would be much harder to parse these json objects in a bash script, and python has a json module to turn this aws output to a json object (Python dictionary). This made it much easier to index our data and grab values that were needed from the aws cli.
+
+
