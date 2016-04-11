@@ -266,7 +266,7 @@ def wait_for_connect():
             sys.stderr.write(error)
             spin_down(7)
     
-    verbose_print("Connected: %s"%output.strip('\n')
+    verbose_print("Connected: %s"%output.strip('\n'))
     return True
 
 def wait_for_attach():
