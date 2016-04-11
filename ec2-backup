@@ -7,6 +7,8 @@ import sys
 import json
 import math
 import time
+import re
+import signal
 
 #Global:
 VERBOSE = False
@@ -15,6 +17,11 @@ VOLUME_ID = ''
 INSTANCE_DNS = ''
 SSH_FLAGS = None
 METHOD = 'dd'
+INSTANCE_TYPE = 't2.micro'
+
+def signal_handler(sig, frame):
+    spin_down(10)
+signal.signal(signal.SIGINT, signal_handler)
 
 def set_params():
     global VERBOSE
@@ -49,6 +56,7 @@ def set_params():
 
     if os.environ.get('EC2_BACKUP_FLAGS_AWS'):
         aws_flags = os.environ.get('EC2_BACKUP_FLAGS_AWS')
+        check_aws_flags(aws_flags)
     else: aws_flags = None
 
     return (directory, aws_flags)
@@ -56,6 +64,18 @@ def set_params():
 def verbose_print(msg):
 	if (VERBOSE):
 		print (msg)
+
+def check_aws_flags(aws_flags):
+    global INSTANCE_TYPE
+    pat = re.compile('(--instance-type ([a-z]\d\.\w+))', re.IGNORECASE)
+    result = pat.match(aws_flags)
+    verbose_print("Flags: %s"%aws_flags)
+    verbose_print("Match: %s"%result.group(0))
+    if (aws_flags != result.group(0)):
+        sys.stderr.write("Invalid EC2_BACKUP_FLAGS_AWS value: Only '--instance-type <type>' is accepted")
+    if result.group(2):
+        verbose_print("Instance Type Set: %s"%result.group(2))
+        INSTANCE_TYPE = result.group(2)
 
 def check_volume_id(vol_id, vol_size):
     #check valid volume ID
@@ -119,8 +139,6 @@ def check_dir(directory):
 
 def create_keypair():
     global SSH_FLAGS
-    if (SSH_FLAGS == None):
-        SSH_FLAGS = '-i ~/.ssh/EC2-Backup-Key.pem'
 
     cmd = "aws ec2 describe-key-pairs --key-name EC2-Backup-Key"
     process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -128,6 +146,9 @@ def create_keypair():
 
     if (process.returncode==0 and output):
         verbose_print("EC2-Backup-Key already configured")
+        if (SSH_FLAGS == None):
+            verbose_print("Set SSH_FLAGS to default")
+            SSH_FLAGS = '-i ~/.ssh/EC2-Backup-Key.pem'
         return True
 
     if (error == "A client error (InvalidKeyPair.NotFound) occurred when calling the DescribeKeyPairs operation: The key pair 'EC2-Backup-Key' does not exist\n"):
@@ -138,6 +159,9 @@ def create_keypair():
         if (process.returncode!=0):
             sys.stderr.write(error)
             spin_down(process.returncode)
+        if (SSH_FLAGS != None):
+            sys.stderr.write("Error: SSH_FLAG set, but EC2-Backup-Key not created")
+            spin_down(9)
 
         verbose_print("Setting new key permissions")
         cmd = "chmod 600 ~/.ssh/EC2-Backup-Key.pem"  
@@ -154,15 +178,13 @@ def create_keypair():
         sys.stderr.write(error)
         spin_down(5)
 
-
 def create_instance(aws_flags):
     global INSTANCE_ID 
     verbose_print("Creating instance to attach volume...")
     ubuntu='ami-fce3c696'
-    instance_type = 't2.micro'
     
     create_keypair()
-    cmd = "aws ec2 run-instances --image-id %s --instance-type %s --placement 'AvailabilityZone=us-east-1a' --key EC2-Backup-Key --output text --query 'Instances[*].InstanceId'" %(ubuntu,instance_type)
+    cmd = "aws ec2 run-instances --image-id %s --instance-type %s --placement 'AvailabilityZone=us-east-1a' --key EC2-Backup-Key --output text --query 'Instances[*].InstanceId'" %(ubuntu,INSTANCE_TYPE)
     process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     (output, error) = process.communicate()
     
@@ -170,7 +192,7 @@ def create_instance(aws_flags):
         sys.stderr.write(error)
         spin_down(process.returncode)
     else:
-        INSTANCE_ID = output.strip('\n')
+        INSTANCE_ID = output.strip('\n').strip()
         return True
 
 def wait_for_instance(instance_id):
@@ -254,7 +276,7 @@ def wait_for_connect():
     count = 0
     delay = 10
 
-    verbose_print("Attempting to ssh to instance")
+    verbose_print("Attempting to ssh to: %s"%INSTANCE_DNS)
     cmd ='ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"uname -a\"'%(SSH_FLAGS,INSTANCE_DNS)
     process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     (output, error) = process.communicate()
@@ -437,7 +459,8 @@ def spin_down(exitcode=None):
         if (process.returncode != 0):
             sys.stderr.write(error)
 
-    print VOLUME_ID
+    if (exitcode == 0):
+        print VOLUME_ID
     sys.exit(exitcode)
 
 def main():
