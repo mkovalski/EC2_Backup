@@ -359,12 +359,14 @@ def mount_volume():
         if (process.returncode != 0):
             sys.stderr.write(error)
             spin_down(process.returncode)
-        verbose_print("FS Created: %s"%output.strip('\n'))
+        verbose_print("FS Created")
     #Mount
     verbose_print("Mounting")
     cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkdir /mnt/backup; sudo mount /dev/xvdf /mnt/backup\""%(SSH_FLAGS, INSTANCE_DNS)
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
     if (process.returncode != 0):
-        sys.stderr.write(error)
+        sys.stderr.write(error_)
         spin_down(process.returncode)
     verbose_print("Mounted FS: %s"%output)
     
