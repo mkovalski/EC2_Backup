@@ -446,6 +446,7 @@ def main():
         mount_volume()
     launch_backup(directory,METHOD,SSH_FLAGS)
     spin_down(0)
+    print VOLUME_ID
 
 if __name__ == "__main__":
     main()
