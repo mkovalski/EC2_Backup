@@ -4,12 +4,23 @@ import os
 import argparse
 import subprocess
 import sys
+import json
+import math
+import time
 
 #Global:
 VERBOSE = False
+INSTANCE_ID = ''
+VOLUME_ID = ''
+INSTANCE_DNS = ''
+SSH_FLAGS = None
+METHOD = 'dd'
 
 def set_params():
     global VERBOSE
+    global VOLUME_ID
+    global SSH_FLAGS
+    global METHOD
     parser = argparse.ArgumentParser(description='The ec2-backup tool performs a backup of the given directory into Amazon \
                  Elastic Block Storage (EBS).  This is achieved by creating a volume of \
                       the appropriate size, attaching it to an EC2 instance and finally copying \
@@ -22,11 +33,11 @@ def set_params():
     
     #default should use dd, rsync otherwise
     if not args.m:
-        method = 'dd'
+        METHOD = 'dd'
     else:
-        method = args.m
+        METHOD = args.m
 
-    volume_id = args.v
+    VOLUME_ID = args.v
     directory = args.dir
 
     if os.environ.get('EC2_BACKUP_VERBOSE'):
@@ -34,14 +45,13 @@ def set_params():
     else: VERBOSE = False
 
     if os.environ.get('EC2_BACKUP_FLAGS_SSH'):
-        key = os.environ.get('EC2_BACKUP_FLAGS_SSH')
-    else: key = None
+        SSH_FLAGS = os.environ.get('EC2_BACKUP_FLAGS_SSH')
 
     if os.environ.get('EC2_BACKUP_FLAGS_AWS'):
-        backup_flags = os.environ.get('EC2_BACKUP_FLAGS_AWS')
-    else: backup_flags = None
+        aws_flags = os.environ.get('EC2_BACKUP_FLAGS_AWS')
+    else: aws_flags = None
 
-    return (method, volume_id, directory, key, backup_flags)
+    return (directory, aws_flags)
 
 def verbose_print(msg):
 	if (VERBOSE):
@@ -50,8 +60,6 @@ def verbose_print(msg):
 def check_volume_id(vol_id, vol_size):
     #check valid volume ID
     #Move to create_volume or a check_volume?
-    #TODO: Check if attached already
-    #TODO: Check size w/ result from check_dir
      
     #if no volume given, return and create one
     if not vol_id:
@@ -59,14 +67,30 @@ def check_volume_id(vol_id, vol_size):
 
     verbose_print("Checking volume %s given..." % vol_id)
     
-    process = subprocess.Popen("aws ec2 describe-volumes --volume-ids %s " % vol_id, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    process = subprocess.Popen("aws ec2 describe-volumes --volume-ids %s" % vol_id, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     (output, error) = process.communicate()
     if process.returncode != 0:
-        print error
+        sys.stderr.write(error)
         sys.exit(process.returncode)
     else:
-        verbose_print("Volume %s OK" % vol_id)
+        #check the size, make sure it is large enough. 
+        #we can assume the output should be the same for all describe-volumes
+        #command with only one volume given, and we will always give just one volume
+        e = json.loads(output)
+        try:
+            e['Volumes'][0]['Size']
+        except:
+            verbose_print("Could not get the size of volume %s, exiting." % vol_id)
+            sys.exit(2)
+
+        vol_size_GiB = int(vol_size/1024000.0)
+        new_vol_size = int(e['Volumes'][0]['Size'])
+        if vol_size_GiB > new_vol_size:
+            verbose_print("Cannot fit the backup on %s. Backup size is %s, volume size is %s. Make sure that the volume size is double the backup folder's size." %(vol_id, str(vol_size_GB/2), new_vol_size))
+            sys.exit(2)
+        verbose_print("Volume %s OK" %vol_id)
         return True
+
 
 def check_dir(directory):
     verbose_print("Checking directory %s" % directory)
@@ -77,7 +101,7 @@ def check_dir(directory):
         (output, error) = process.communicate()
 
         if process.returncode != 0:
-            print error
+            sys.stderr.write(error)
             sys.exit(process.returncode)
 
         #make sure variable can be an int
@@ -93,77 +117,282 @@ def check_dir(directory):
         print "%s does not exits, please use a directory that exists for backup" % directory
         sys.exit(2)
 
-def create_instance(backup_flags):
+def create_keypair():
+    global SSH_FLAGS
+    if (SSH_FLAGS == None):
+        SSH_FLAGS = '-i ~/.ssh/EC2-Backup-Key.pem'
+
+    cmd = "aws ec2 describe-key-pairs --key-name EC2-Backup-Key"
+    process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+
+    if (process.returncode==0 and output):
+        verbose_print("EC2-Backup-Key already configured")
+        return True
+
+    if (error == "A client error (InvalidKeyPair.NotFound) occurred when calling the DescribeKeyPairs operation: The key pair 'EC2-Backup-Key' does not exist\n"):
+        verbose_print("Creating new key-pair")
+        cmd = "aws ec2 create-key-pair --key-name EC2-Backup-Key --query 'KeyMaterial' --output text > ~/.ssh/EC2-Backup-Key.pem"
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        if (process.returncode!=0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+
+        verbose_print("Setting new key permissions")
+        cmd = "chmod 600 ~/.ssh/EC2-Backup-Key.pem"  
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        if (process.returncode!=0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+        
+        verbose_print("Key Pair Generated")
+        return True
+    else:
+        verbose_print("Error generating key-pair")
+        sys.stderr.write(error)
+        spin_down(5)
+
+
+def create_instance(aws_flags):
+    global INSTANCE_ID 
     verbose_print("Creating instance to attach volume...")
     ubuntu='ami-fce3c696'
-    instance_id = ''
-
-    command = 'aws ec2 run-instances --image-id %s ' % ubuntu
-    if backup_flags:
-        command += backup_flags
-
+    instance_type = 't2.micro'
     
-    return instance_id
+    create_keypair()
+    cmd = "aws ec2 run-instances --image-id %s --instance-type %s --key EC2-Backup-Key --output text --query 'Instances[*].InstanceId'" %(ubuntu,instance_type)
+    process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+    
+    if (process.returncode != 0):
+        sys.stderr.write(error)
+        spin_down(process.returncode)
+    else:
+        INSTANCE_ID = output.strip('\n')
+        return True
 
+def wait_for_instance(instance_id):
+    global INSTANCE_DNS
+    timeout = 100
+    count = 0
+    delay = 5
+    state = ''
+    cmd = "aws ec2 describe-instances --instance-ids %s --output text --query 'Reservations[*].Instances[*].State.Name'" % instance_id
+
+    while (state != 'running'):
+        verbose_print("Waiting for instance...")
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+        else:
+            state = output.strip('\n')
+            verbose_print("Reading state: %s" % state)
+
+        if (count <= timeout):
+            count = count + delay
+        else:
+            sys.stderr.write("Error: Instance Timeout")    
+            spin_down(3)
+        time.sleep(delay)
+
+    verbose_print("Instance Ready, Retrieving Public DNS name")
+    cmd = "aws ec2 describe-instances --instance-ids %s --output text --query 'Reservations[*].Instances[*].PublicDnsName'" % instance_id
+
+    process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+    
+    if (process.returncode != 0):
+        sys.stderr.write(error)
+        spin_down(process.returncode)
+    else:
+        INSTANCE_DNS = output.strip('\n')
+        verbose_print("Instance DNS Name: %s" %INSTANCE_DNS)
+        if not INSTANCE_DNS:
+            sys.stderr.write("Cannot Retrieve Public DNS Name")
+            spindown(6)
+    return True
+
+def wait_for_volume(volume_id):
+    timeout = 100
+    count = 0
+    delay = 5
+    state = ''
+    cmd = "aws ec2 describe-volumes --volume-ids %s --output text --query 'Volumes[*].State'" % volume_id
+
+    while (state != 'available'):
+        verbose_print("Waiting for Volume ID %s ..."%volume_id)
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+        else:
+            state = output.strip('\n')
+            verbose_print("Reading state: %s" % state)
+
+        if (count <= timeout):
+            count = count + delay
+        else:
+            sys.stderr.write("Error: Volume Timeout")    
+            spin_down(4)
+        time.sleep(delay)
+
+    verbose_print("Volume Ready")
+    return True
+    
 
 def create_volume(vol_size): 
+    global VOLUME_ID
     vol_id = ""
-
-    verbose_print("Creating volume of size %sKB" % str(vol_size))
-    vol_size = int(vol_size / 100000)
+    vol_size = int(math.ceil(vol_size / 1024000.0))
+    verbose_print("Creating volume of size %sGiB" % str(vol_size))
     if vol_size < 1:
-        verbose_print("Directory size less than 1GB, volume will be 1G")
         vol_size = 1
-
-    process = subprocess.Popen('aws ec2 create-volume --availability-zone us-east-1d --size ' + str(vol_size), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    #(output, error) = process.communicate()
-     
+    cmd =  'aws ec2 create-volume --availability-zone us-east-1a --size %s --output text --query VolumeId'%str(vol_size) 
     
-    return vol_id
+    process = subprocess.Popen(cmd , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+    vol_id = output.strip('\n')
+    verbose_print("create-volume executed: %s"%vol_id) 
 
-def use_volume(volume_id):
-    #attach and mount volume
-    pass
+    if (process.returncode != 0):
+        sys.stderr.write(error)
+        spin_down(process.returncode)
+    else:
+        return vol_id
 
-def launch_backup(method):
+def attach_volume(volume_id):
+    wait_for_volume(volume_id)
+    wait_for_instance(INSTANCE_ID)
+    verbose_print("Attaching Volume to Instance")
+    cmd = "aws ec2 attach-volume --volume-id %s --instance-id %s --device /dev/sdf"%(volume_id,INSTANCE_ID)
+    process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+
+    if (process.returncode != 0):
+        sys.stderr.write(error)
+        spin_down(process.returncode)
+    else:
+        time.sleep(20)
+        verbose_print("Volume Attached")
+    
+def mount_volume():
+    verbose_print("Mounting Volume to Instance")
+    #Check for filesystem
+    verbose_print("Checking for filesystem")
+    cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"blkid /dev/sdf\""%(SSH_FLAGS, INSTANCE_DNS)
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (output, error) = process.communicate()
+    if (process.returncode != 0):
+        verbose_print("Error on checking for fs")
+        sys.stderr.write(error)
+        spin_down(process.returncode)
+    
+    #Create filesystem if needed
+    if (output.strip('\n') == ''):
+        verbose_print("Making filesystem")
+        cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkfs -t ext4 /dev/sdf\""%(SSH_FLAGS, INSTANCE_DNS)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+        
+    #Mount
+    verbose_print("Mounting")
+    cmd = "ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo mkdir /mnt/backup; sudo mount /dev/sdf /mnt/backup\""%(SSH_FLAGS, INSTANCE_DNS)
+
+
+
+def launch_backup(directory, method, ssh_flags):
     #Do dd or rsync
-    pass
-def spin_down():
+    if (method == 'dd'):
+        verbose_print("Launching dd backup")
+        cmd = "tar -cvf - %s | ssh  -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo dd of=/dev/sdf conv=block bs=64k\"" %(directory,ssh_flags,INSTANCE_DNS)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+    
+    #Rsync    
+    else:
+        verbose_print("Launching rsync backup")
+        cmd = "rsync --rsync-path\"sudo rsync\" -e \"ssh -oStrictHostKeyChecking=no %s\" -a %s ubuntu@%s:/mnt/backup" %(ssh_flags,directory,INSTANCE_DNS)
+        process = subprocess.Popen(dd_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+            spin_down(process.returncode)
+        
+    return True
+
+def spin_down(exitcode=None):
     #Clean up - shutdown instances and such
-    pass
+    if exitcode==None:
+        exitcode = 0
+    verbose_print("Cleaning up w/ error code: %s"%str(exitcode))
+    sys.exit(exitcode)
+    #unmount
+    if ((VOLUME_ID.strip() != '') and (INSTANCE_ID.strip() != '') and (METHOD == 'rsync')):
+        verbose_print("Unmounting device")
+        cmd = 'ssh -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo umount -d /dev/sdf\"'%(SSH_FLAGS,INSTANCE_DNS)
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+
+    if (VOLUME_ID.strip() != ''):
+        verbose_print("Detaching Volume ID %s"%VOLUME_ID)
+        cmd = 'aws ec2 detach-volume --volume-id %s'%VOLUME_ID
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+
+    if (INSTANCE_ID.strip() != ''):
+        verbose_print("Terminating Instance ID %s"%INSTANCE_ID)
+        cmd = 'aws ec2 terminate-instances --instance-ids %s'%INSTANCE_ID
+        process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        (output, error) = process.communicate()
+
+        if (process.returncode != 0):
+            sys.stderr.write(error)
+
+    sys.exit(exitcode)
 
 def main():
-    method = ''
-    volume_id = ''
+    global VOLUME_ID
     directory = ''
 
-    #EC2_BACKUP_VERBOSE set as global
-    #EC2_BACKUP_FLAGS_SSH or use Original
-    key = None
     #EC2_BACKUP_FLAGS_AWS
-    backup_flags = None
+    aws_flags = None
     #return code for program
     exit_code = 0
     #directory size
     dir_size = 0
-    #Ubuntu instance
-    instance=''
-
-
 
     #params set
-    (method, volume_id, directory, key, backup_flags) = set_params()
-
-    #TODO: Check size of directory in check_dir
-    dir_size = check_dir(directory)
-     
-    if not check_volume_id(volume_id, dir_size*2):
-        volume_id = create_volume(dir_size*2)
-
-    instance = create_instance(backup_flags)
-    use_volume(volume_id)
-    launch_backup(method)
-    spin_down()
+    (directory, aws_flags) = set_params()
+    
+    dir_size = check_dir(directory)     
+    if not check_volume_id(VOLUME_ID, dir_size):
+        VOLUME_ID = create_volume(dir_size*2)
+    create_instance(aws_flags)
+    attach_volume(VOLUME_ID)
+    if (METHOD=='rsync'):
+        mount_volume()
+    launch_backup(directory,METHOD,SSH_FLAGS)
+    spin_down(0)
 
 if __name__ == "__main__":
     main()
