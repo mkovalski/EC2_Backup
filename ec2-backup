@@ -339,7 +339,6 @@ def spin_down(exitcode=None):
     if exitcode==None:
         exitcode = 0
     verbose_print("Cleaning up w/ error code: %s"%str(exitcode))
-    sys.exit(exitcode)
     #unmount
     if ((VOLUME_ID.strip() != '') and (INSTANCE_ID.strip() != '') and (METHOD == 'rsync')):
         verbose_print("Unmounting device")
