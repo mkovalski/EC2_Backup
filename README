@@ -19,8 +19,8 @@ The issue we seemed to run into is the use of keys. The only way to really see w
 
 The group did have issues with the flags set to create an instance. At first, we were under the impression that we could create whatever instance we wanted and use this throughout the process. But, this is not the case. For example, we decided to use an Ubuntu instance. But, the user has the option to set the AMI for the instance of their choosing. One issue that arises is that all instances do not use the same 'root' login. Ubuntu uses ubuntu, another instance can use 'ec2-user', another 'admin, another 'root', and so forth. This script is not able to handle this.
 
-We got dd to work, but we did have an issue with rsync. Sometimes, the connection times out on us and we were unable to figure out why that is. At first, we thought it may be because an instance takes a bit of time to boot up, but it doesn't seem like this was the case.
-
 The group decided to format the volume of type ext4 if an rsync was needed. If it is not, dd copies over the raw data to the volume. 
 
 After we mount the volume and backup the data to the volume, we unmount the volume, spin down the instance, and print the volume name at the end.
+
+Another issue we ran into was the process of using rsync dealing with ssh keys. We originally were providing the key using the "~" symbolizing the home directory. We had to do a replace, ssh_flags = ssh_flags.replace("~","$HOME"), to get this working with rsync.

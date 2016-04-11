@@ -1,3 +1,71 @@
+commit d73c9ef78725bea9b6d16979a4cff754d2fe1ea7
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Mon Apr 11 11:50:27 2016 -0400
+
+    README updated again
+
+commit e5757d08d6339da620cee2c95560ca299a4168e6
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 11:37:45 2016 -0400
+
+    fixed rsync ssh issue
+
+commit da4b504affe4bcb0bacfeeb4e4b7d7ad4a95e739
+Merge: 9ac12b7 d9571af
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 11:27:03 2016 -0400
+
+    Merge branch 'master' of github.com:mkovalski/EC2_Backup
+
+commit 9ac12b71a16794ef44a61ca391144ef3f4b45c7e
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 11:26:55 2016 -0400
+
+    mounting issues. Currently problem with key on rsync
+
+commit d9571afb937efdf52aa9fa69ff9f6cec90280de0
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Mon Apr 11 11:11:47 2016 -0400
+
+    Redoing print volume statement at end
+
+commit 8bde421b3253d8ea3e2052cac9e160be3a204329
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 11:05:03 2016 -0400
+
+    Device mapping fix, syntax
+
+commit 643dffb308f6b9ce67807d8fef766372e2cf9697
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 10:43:29 2016 -0400
+
+    Set availability zone of instance
+
+commit 3d99ee8c13b025f0216ab01b561f139bb9e69120
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 10:33:54 2016 -0400
+
+    syntax error
+
+commit dd2ea39c3c952d268520de60f9ed19d7d0fbb44a
+Merge: 30a91aa c06305a
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 10:30:50 2016 -0400
+
+    Merge branch 'master' of github.com:mkovalski/EC2_Backup
+
+commit 30a91aaca53e869ab05e7595d5315da0ddf83a12
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 10:30:09 2016 -0400
+
+    Better attachment status and connecting checking.
+
+commit c06305a15081aead6004d3c6a29464cc0cb3a5be
+Author: mkovalski <michaelhkovalski@gmail.com>
+Date:   Mon Apr 11 10:08:38 2016 -0400
+
+    Added gitlog
+
 commit 02c0e49104908eb0d72f0262d5c4781ffb76ab60
 Author: mkovalski <michaelhkovalski@gmail.com>
 Date:   Mon Apr 11 10:04:45 2016 -0400
