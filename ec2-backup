@@ -198,6 +198,10 @@ def wait_for_instance(instance_id):
         else:
             sys.stderr.write("Error: Instance Timeout")    
             spin_down(3)
+        
+        if (state == 'in-use'):
+            sys.stderr.write("Volume in use")
+            spin_down(8)
         time.sleep(delay)
 
     verbose_print("Instance Ready, Retrieving Public DNS name")
@@ -378,7 +382,7 @@ def launch_backup(directory, method, ssh_flags):
     #Do dd or rsync
     if (method == 'dd'):
         verbose_print("Launching dd backup")
-        cmd = "tar -cvf - %s | ssh  -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo dd of=/dev/sdf conv=block bs=64k\"" %(directory,ssh_flags,INSTANCE_DNS)
+        cmd = "tar -cvf - %s | ssh  -oStrictHostKeyChecking=no %s ubuntu@%s \"sudo dd of=/dev/xvdf conv=block bs=64k\"" %(directory,ssh_flags,INSTANCE_DNS)
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         (output, error) = process.communicate()
 
