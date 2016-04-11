@@ -162,7 +162,7 @@ def create_instance(aws_flags):
     instance_type = 't2.micro'
     
     create_keypair()
-    cmd = "aws ec2 run-instances --image-id %s --instance-type %s --key EC2-Backup-Key --output text --query 'Instances[*].InstanceId'" %(ubuntu,instance_type)
+    cmd = "aws ec2 run-instances --image-id %s --instance-type %s --placement 'AvailabilityZone=us-east-1a' --key EC2-Backup-Key --output text --query 'Instances[*].InstanceId'" %(ubuntu,instance_type)
     process = subprocess.Popen(cmd ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     (output, error) = process.communicate()
     
