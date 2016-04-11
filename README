@@ -13,4 +13,14 @@ The next thing we needed to think about was how many system calls were going to 
 
 Lastly, we were aware of the output from using the aws commands. It would be much harder to parse these json objects in a bash script, and python has a json module to turn this aws output to a json object (Python dictionary). This made it much easier to index our data and grab values that were needed from the aws cli.
 
+The parsing of the input data was the easier part of this assignment. Really, we needed to adjust our local variables based on user input and apply that later on in the code. 
 
+The issue we seemed to run into is the use of keys. The only way to really see what key the user is using on an AWS instance is to use the describe-key-pairs option. By doing this, we can see the list of key pairs that the user has. But, if there are multiple, we can run into an issue. We need to assume the user is using the correct key in their ~/.ssh/config file otherwise we cannot access the server. But, as the requirements state, we should assume the user has set up their environment correctly. This implies that the key they are using in their AWS ec2 instances is correct. If a correct key is not found, then one will be created to use just for this instance. 
+
+The group did have issues with the flags set to create an instance. At first, we were under the impression that we could create whatever instance we wanted and use this throughout the process. But, this is not the case. For example, we decided to use an Ubuntu instance. But, the user has the option to set the AMI for the instance of their choosing. One issue that arises is that all instances do not use the same 'root' login. Ubuntu uses ubuntu, another instance can use 'ec2-user', another 'admin, another 'root', and so forth. This script is not able to handle this.
+
+We got dd to work, but we did have an issue with rsync. Sometimes, the connection times out on us and we were unable to figure out why that is. At first, we thought it may be because an instance takes a bit of time to boot up, but it doesn't seem like this was the case.
+
+The group decided to format the volume of type ext4 if an rsync was needed. If it is not, dd copies over the raw data to the volume. 
+
+After we mount the volume and backup the data to the volume, we unmount the volume, spin down the instance, and print the volume name at the end.
