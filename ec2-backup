@@ -389,7 +389,8 @@ def launch_backup(directory, method, ssh_flags):
     #Rsync    
     else:
         verbose_print("Launching rsync backup")
-        cmd = "rsync --rsync-path \"sudo rsync\" -e \"ssh -oStrictHostKeyChecking=no %s\" -a %s ubuntu@%s:/mnt/backup" %(ssh_flags,directory,INSTANCE_DNS)
+        ssh_flags = ssh_flags.replace("~","$HOME")
+        cmd = "rsync --rsync-path \"sudo rsync\" -e \"ssh -oStrictHostKeyChecking=no %s \" -a %s ubuntu@%s:/mnt/backup" %(ssh_flags,directory,INSTANCE_DNS)
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         (output, error) = process.communicate()
 
