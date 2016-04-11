@@ -1,0 +1,103 @@
+commit 02c0e49104908eb0d72f0262d5c4781ffb76ab60
+Author: mkovalski <michaelhkovalski@gmail.com>
+Date:   Mon Apr 11 10:04:45 2016 -0400
+
+    Printed volume-id at the end and updated README
+
+commit 88d293d5dfa42180b447590d85a8fe7a9b6ae4ee
+Author: mkovalski <michaelhkovalski@gmail.com>
+Date:   Mon Apr 11 09:15:14 2016 -0400
+
+    Adding readme, forgot to add it to the project
+
+commit d5498e3c1f1fd664a49a8ebf5c8114967fb51abc
+Author: mkovalski <michaelhkovalski@gmail.com>
+Date:   Mon Apr 11 09:14:20 2016 -0400
+
+    Adding the actual README to submit
+
+commit eea6261705fc20a3203969366c25e9403c38c0c2
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 07:47:17 2016 -0400
+
+    Remove test flag that stopped cleanup
+
+commit 881bfa91bf6c01fb36f1c7957b23856c529e0a39
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Mon Apr 11 06:51:54 2016 -0400
+
+    Mostly functional but embarassing.
+    dd works. rsync has problems with getting connection refused sometimes, I cannot for the life of me find out why.
+    Doesn't take flags like it's supposed to.
+
+commit 3086eb06141fe7e1e5ec73385749858ff825196f
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sun Apr 10 15:10:54 2016 -0400
+
+    Added some null return values, started adding sys calls to functions
+
+commit 4c7dfc3ba96d7ef85032922445353c298b76804e
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sun Apr 10 13:41:10 2016 -0400
+
+    Fix indent errors
+
+commit 1e3c35697096a1ac14a708a8fcb2cb761d470fc8
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sun Apr 10 13:38:24 2016 -0400
+
+    Check the directory size and returned, cleaned up some of the volume checking
+
+commit 7e8a7d25515b2506dbb3c29237410e9cb8aeae4a
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Sun Apr 10 12:31:29 2016 -0400
+
+    extra verbose parameter was hiding
+
+commit 504c932ac9fbeff3a9c289550869c4cbe449387a
+Author: Applesnacks <twilliam@stevens.edu>
+Date:   Sun Apr 10 12:26:34 2016 -0400
+
+    Placeholder calls. Made VERBOSE global and verbose_print.
+
+commit 95f25bdca1891dbb85d832f5f7afaf0b383171b3
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sat Apr 9 22:42:25 2016 -0400
+
+    Added directory checking
+
+commit 22b6d35ad5a332988099480f29e77b558e2aad08
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sat Apr 9 22:37:36 2016 -0400
+
+    Added volume checking
+
+commit 6f90ac5f45c8c2e8259fdfdf1448a1703616b6ef
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sat Apr 9 22:18:42 2016 -0400
+
+    Changed the parameters around a bit, had them as global in the last commit
+
+commit 4cc54d986cd876f4fdaa7c99c85ae45bfe6ead2f
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Mon Apr 4 19:02:59 2016 -0400
+
+    updated ec2-backup to look nicer, use main function, added some comments, create functions
+
+commit dc9940bd12d39030e273887f8a20e1af32446838
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Mon Apr 4 17:33:31 2016 -0400
+
+    Added the base ec2-backup script
+
+commit e7e87cc3c0b25e8ea8b13cff8cdc990155f391fa
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sun Apr 3 17:16:22 2016 -0400
+
+    Added the ec2-backup.txt file to the README
+
+commit fb024619061a9c8bc9712a11632938bb9e0fd873
+Author: Michael Kovalski <mkovalsk@stevens.edu>
+Date:   Sun Apr 3 17:14:38 2016 -0400
+
+    Initial Commit
